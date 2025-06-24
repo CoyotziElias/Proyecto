@@ -208,14 +208,14 @@ def ventana_mostrar_datos():
     win.title("Datos Registrados")
 
     tab_control = ttk.Notebook(win)
-    tabs = [ttk.Frame(tab_control) for _ in range(3)]
-    titles = ['Pacientes', 'Áreas', 'Camas']
+    tab1 = tk.Frame(tab_control, bg="#e6f2ff")  
+    tab2 = tk.Frame(tab_control, bg="#e8f5e9")  
+    tab3 = tk.Frame(tab_control, bg="#fff3e0")  
 
-    for t, title in zip(tabs, titles):
-        tab_control.add(t, text=title)
+    tab_control.add(tab1, text="Pacientes")
+    tab_control.add(tab2, text="Áreas")
+    tab_control.add(tab3, text="Camas")
     tab_control.pack(expand=1, fill='both')
-
-    tab1, tab2, tab3 = tabs
 
     for paciente in hospital.pacientes:
         frame = tk.Frame(tab1)
