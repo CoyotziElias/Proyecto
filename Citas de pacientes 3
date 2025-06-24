@@ -1,0 +1,274 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import json
+from datetime import datetime
+
+
+class Personal:
+    def __init__(self, nombre, ap_pat, ap_mat, identificacion, correo=None):
+        self.nombre = nombre
+        self.ap_pat = ap_pat
+        self.ap_mat = ap_mat
+        self.identificacion = identificacion
+        self.correo = correo
+
+    def __str__(self):
+        correo_str = f" | Correo: {self.correo}" if self.correo else ""
+        return f"{self.nombre} {self.ap_pat} {self.ap_mat} - ID: {self.identificacion}{correo_str}"
+
+    def to_dict(self):
+        return self.__dict__
+
+class Doctor(Personal): pass
+class Enfermero(Personal): pass
+
+class Paciente(Personal):
+    def __init__(self, nombre, ap_pat, ap_mat, identificacion, correo, hora):
+        super().__init__(nombre, ap_pat, ap_mat, identificacion, correo)
+        self.hora = hora
+
+    def __str__(self):
+        return super().__str__() + f" | Hora: {self.hora}"
+
+class Hospital:
+    def __init__(self):
+        self.pacientes = []
+        self.doctores = []
+        self.enfermeros = []
+        self.areas = {
+            "Urgencias": [],
+            "Hospitalización": [],
+            "Unidad de Cuidados Intensivos": []
+        }
+        self.camas = {}
+
+    def guardar_datos(self):
+        data = {
+            "pacientes": [p.__dict__ for p in self.pacientes],
+            "doctores": [d.__dict__ for d in self.doctores],
+            "enfermeros": [e.__dict__ for e in self.enfermeros],
+            "areas": {
+                area: [p.__dict__ for p in lista] for area, lista in self.areas.items()
+            },
+            "camas": {
+                cama: persona.__dict__ for cama, persona in self.camas.items()
+            }
+        }
+        with open("hospital_datos.json", "w") as f:
+            json.dump(data, f, indent=4)
+
+hospital = Hospital()
+
+usuario_activo = ""
+
+
+def ventana_principal():
+    main_win = tk.Tk()
+    main_win.title("Sistema Hospitalario")
+
+    tk.Label(main_win, text=f"Sesión iniciada por: {usuario_activo}", font=("Arial", 10, "italic")).pack(pady=5)
+
+    tk.Button(main_win, text="Registrar Paciente", width=30, command=ventana_registro_paciente).pack(pady=5)
+    tk.Button(main_win, text="Asignar Personal a Área", width=30, command=ventana_asignar_area).pack(pady=5)
+    tk.Button(main_win, text="Asignar Personal a Cama", width=30, command=ventana_asignar_cama).pack(pady=5)
+    tk.Button(main_win, text="Mostrar Datos", width=30, command=ventana_mostrar_datos).pack(pady=5)
+    tk.Button(main_win, text="Salir", width=30, command=main_win.quit).pack(pady=5)
+
+    main_win.mainloop()
+
+def ventana_registro_paciente():
+    def registrar():
+        nombre = entry_nombre.get()
+        ap_pat = entry_ap_pat.get()
+        ap_mat = entry_ap_mat.get()
+        iden = entry_id.get()
+        correo = entry_correo.get()
+        hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        if not (nombre and ap_pat and ap_mat and iden and correo):
+            messagebox.showwarning("Faltan datos", "Complete todos los campos.")
+            return
+
+        paciente = Paciente(nombre, ap_pat, ap_mat, iden, correo, hora)
+        hospital.pacientes.append(paciente)
+        hospital.guardar_datos()
+        messagebox.showinfo("Éxito", "Paciente registrado.")
+        win.destroy()
+
+    win = tk.Toplevel()
+    win.title("Registrar Paciente")
+
+    labels = ["Nombre:", "Apellido Paterno:", "Apellido Materno:", "ID:", "Correo electrónico:"]
+    entries = []
+    for i, text in enumerate(labels):
+        tk.Label(win, text=text).grid(row=i, column=0)
+        e = tk.Entry(win)
+        e.grid(row=i, column=1)
+        entries.append(e)
+
+    entry_nombre, entry_ap_pat, entry_ap_mat, entry_id, entry_correo = entries
+
+    tk.Button(win, text="Registrar", command=registrar).grid(row=5, column=0, columnspan=2)
+
+def ventana_asignar_area():
+    def asignar():
+        nombre = entry_nombre.get()
+        ap_pat = entry_ap_pat.get()
+        ap_mat = entry_ap_mat.get()
+        iden = entry_id.get()
+        area = combo_area.get()
+        tipo = combo_tipo.get()
+
+        if not (nombre and ap_pat and ap_mat and iden and area and tipo):
+            messagebox.showwarning("Faltan datos", "Complete todos los campos.")
+            return
+
+        obj = Doctor(nombre, ap_pat, ap_mat, iden) if tipo == "Doctor" else Enfermero(nombre, ap_pat, ap_mat, iden)
+        if tipo == "Doctor":
+            hospital.doctores.append(obj)
+        else:
+            hospital.enfermeros.append(obj)
+
+        hospital.areas[area].append(obj)
+        hospital.guardar_datos()
+        messagebox.showinfo("Éxito", f"{tipo} asignado a {area}")
+        win.destroy()
+
+    win = tk.Toplevel()
+    win.title("Asignar Personal a Área")
+
+    labels = ["Nombre:", "Apellido Paterno:", "Apellido Materno:", "ID:", "Área:", "Tipo:"]
+    entries = []
+    for i, text in enumerate(labels[:4]):
+        tk.Label(win, text=text).grid(row=i, column=0)
+        e = tk.Entry(win)
+        e.grid(row=i, column=1)
+        entries.append(e)
+
+    entry_nombre, entry_ap_pat, entry_ap_mat, entry_id = entries
+
+    tk.Label(win, text="Área:").grid(row=4, column=0)
+    combo_area = ttk.Combobox(win, values=list(hospital.areas.keys()), state="readonly")
+    combo_area.grid(row=4, column=1)
+    combo_area.current(0)
+
+    tk.Label(win, text="Tipo:").grid(row=5, column=0)
+    combo_tipo = ttk.Combobox(win, values=["Doctor", "Enfermero"], state="readonly")
+    combo_tipo.grid(row=5, column=1)
+    combo_tipo.current(0)
+
+    tk.Button(win, text="Asignar", command=asignar).grid(row=6, column=0, columnspan=2)
+
+def ventana_asignar_cama():
+    def asignar():
+        id_cama = entry_cama.get()
+        nombre = entry_nombre.get()
+        ap_pat = entry_ap_pat.get()
+        ap_mat = entry_ap_mat.get()
+        iden = entry_id.get()
+        tipo = combo_tipo.get()
+
+        if not (id_cama and nombre and ap_pat and ap_mat and iden and tipo):
+            messagebox.showwarning("Faltan datos", "Complete todos los campos.")
+            return
+
+        obj = Doctor(nombre, ap_pat, ap_mat, iden) if tipo == "Doctor" else Enfermero(nombre, ap_pat, ap_mat, iden)
+        if tipo == "Doctor":
+            hospital.doctores.append(obj)
+        else:
+            hospital.enfermeros.append(obj)
+
+        hospital.camas[id_cama] = obj
+        hospital.guardar_datos()
+        messagebox.showinfo("Éxito", f"{tipo} asignado a cama {id_cama}")
+        win.destroy()
+
+    win = tk.Toplevel()
+    win.title("Asignar Personal a Cama")
+
+    labels = ["ID de Cama:", "Nombre:", "Apellido Paterno:", "Apellido Materno:", "ID:", "Tipo:"]
+    entries = []
+    for i, text in enumerate(labels[:5]):
+        tk.Label(win, text=text).grid(row=i, column=0)
+        e = tk.Entry(win)
+        e.grid(row=i, column=1)
+        entries.append(e)
+
+    entry_cama, entry_nombre, entry_ap_pat, entry_ap_mat, entry_id = entries
+
+    tk.Label(win, text="Tipo:").grid(row=5, column=0)
+    combo_tipo = ttk.Combobox(win, values=["Doctor", "Enfermero"], state="readonly")
+    combo_tipo.grid(row=5, column=1)
+    combo_tipo.current(0)
+
+    tk.Button(win, text="Asignar", command=asignar).grid(row=6, column=0, columnspan=2)
+
+def ventana_mostrar_datos():
+    win = tk.Toplevel()
+    win.title("Datos Registrados")
+
+    tab_control = ttk.Notebook(win)
+    tabs = [ttk.Frame(tab_control) for _ in range(3)]
+    titles = ['Pacientes', 'Áreas', 'Camas']
+
+    for t, title in zip(tabs, titles):
+        tab_control.add(t, text=title)
+    tab_control.pack(expand=1, fill='both')
+
+    tab1, tab2, tab3 = tabs
+
+    for paciente in hospital.pacientes:
+        frame = tk.Frame(tab1)
+        frame.pack(anchor="w", fill='x')
+          tk.Label(frame, text=str(paciente)).pack(side="left")
+        tk.Button(frame, text="Eliminar", fg="red", command=lambda p=paciente: eliminar_paciente(p, win)).pack(side="right")
+
+    for area, personal in hospital.areas.items():
+        tk.Label(tab2, text=f"{area}:", font=("Arial", 10, "bold")).pack(anchor="w")
+        for p in personal:
+            tk.Label(tab2, text=f"  - {p}").pack(anchor="w")
+        if not personal:
+            tk.Label(tab2, text="  (sin personal asignado)").pack(anchor="w")
+
+    for cama_id, persona in hospital.camas.items():
+        tk.Label(tab3, text=f"{cama_id}: {persona}").pack(anchor="w")
+
+def eliminar_paciente(paciente, ventana_datos):
+    if messagebox.askyesno("Confirmar", f"¿Eliminar al paciente {paciente.nombre}?"):
+        hospital.pacientes.remove(paciente)
+        hospital.guardar_datos()
+        messagebox.showinfo("Eliminado", "Paciente eliminado correctamente.")
+        ventana_datos.destroy()
+        ventana_mostrar_datos() 
+
+def iniciar_sesion():
+   global usuario_activo
+    usuario_correcto = "P.Autorizado"
+    clave_correcta = "citas001"
+
+    usuario = entry_usuario.get()
+    clave = entry_clave.get()
+
+    if usuario == usuario_correcto and clave == clave_correcta:
+        ususario_activo = usuario
+        login_win.destroy()
+        ventana_principal()
+    else:
+        messagebox.showerror("Error", "Usuario o contraseña incorrectos")
+
+
+login_win = tk.Tk()
+login_win.title("Inicio de sesión")
+
+tk.Label(login_win, text="Usuario:").grid(row=0, column=0, pady=5, padx=5)
+tk.Label(login_win, text="Contraseña:").grid(row=1, column=0, pady=5, padx=5)
+
+entry_usuario = tk.Entry(login_win)
+entry_clave = tk.Entry(login_win, show="*")
+
+entry_usuario.grid(row=0, column=1, pady=5)
+entry_clave.grid(row=1, column=1, pady=5)
+
+tk.Button(login_win, text="Iniciar sesión", command=iniciar_sesion).grid(row=2, column=0, columnspan=2, pady=10)
+
+login_win.mainloop()
