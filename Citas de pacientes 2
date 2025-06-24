@@ -59,9 +59,14 @@ class Hospital:
 
 hospital = Hospital()
 
+usuario_activo = ""
+
+
 def ventana_principal():
     main_win = tk.Tk()
     main_win.title("Sistema Hospitalario")
+
+    tk.Label(main_win, text=f"Sesión iniciada por: {usuario_activo}", font=("Arial", 10, "italic")).pack(pady=5)
 
     tk.Button(main_win, text="Registrar Paciente", width=30, command=ventana_registro_paciente).pack(pady=5)
     tk.Button(main_win, text="Asignar Personal a Área", width=30, command=ventana_asignar_area).pack(pady=5)
@@ -213,7 +218,10 @@ def ventana_mostrar_datos():
     tab1, tab2, tab3 = tabs
 
     for paciente in hospital.pacientes:
-        tk.Label(tab1, text=str(paciente)).pack(anchor="w")
+        frame = tk.Frame(tab1)
+        frame.pack(anchor="w", fill='x')
+          tk.Label(frame, text=str(paciente)).pack(side="left")
+        tk.Button(frame, text="Eliminar", fg="red", command=lambda p=paciente: eliminar_paciente(p, win)).pack(side="right")
 
     for area, personal in hospital.areas.items():
         tk.Label(tab2, text=f"{area}:", font=("Arial", 10, "bold")).pack(anchor="w")
@@ -225,8 +233,16 @@ def ventana_mostrar_datos():
     for cama_id, persona in hospital.camas.items():
         tk.Label(tab3, text=f"{cama_id}: {persona}").pack(anchor="w")
 
+def eliminar_paciente(paciente, ventana_datos):
+    if messagebox.askyesno("Confirmar", f"¿Eliminar al paciente {paciente.nombre}?"):
+        hospital.pacientes.remove(paciente)
+        hospital.guardar_datos()
+        messagebox.showinfo("Eliminado", "Paciente eliminado correctamente.")
+        ventana_datos.destroy()
+        ventana_mostrar_datos() 
 
 def iniciar_sesion():
+   global usuario_activo
     usuario_correcto = "P.Autorizado"
     clave_correcta = "citas001"
 
@@ -234,6 +250,7 @@ def iniciar_sesion():
     clave = entry_clave.get()
 
     if usuario == usuario_correcto and clave == clave_correcta:
+        ususario_activo = usuario
         login_win.destroy()
         ventana_principal()
     else:
